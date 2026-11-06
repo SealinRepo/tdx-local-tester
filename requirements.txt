@@ -1,0 +1,5 @@
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27,<1
+pandas>=2.0,<4
+mootdx>=0.11,<1
+pypinyin>=0.50,<1

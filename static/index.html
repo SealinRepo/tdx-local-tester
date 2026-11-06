@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本地交易回测与看盘系统</title>
+  <link rel="stylesheet" href="/static/style.css?v=11">
+</head>
+<body>
+  <header class="topbar" id="topbar">
+    <a class="brand" href="/">量化工作台</a>
+    <nav aria-label="主导航">
+      <button class="nav-button active" data-page="backtest">回测</button>
+      <button class="nav-button" data-page="watch">看盘</button>
+      <button class="nav-button" data-page="settings">设置</button>
+    </nav>
+    <button class="pin-button" id="toggle-topbar-pin" type="button" aria-pressed="false">固定顶部</button>
+    <span class="local-badge">本地数据 · 单机运行</span>
+  </header>
+
+  <main>
+    <section id="page-backtest" class="page active">
+      <div class="page-heading">
+        <div><p class="eyebrow">STRATEGY LAB</p><h1>策略回测</h1>
+          <p class="subheading">策略可查询本地股票池和指定股票的历史行情，并进行多标的回测。</p></div>
+      </div>
+      <section class="panel workbench">
+        <div class="section-title"><div><h2>策略脚本工作区</h2><p>本地 Python 编辑器支持语法高亮、自动补全和快捷键 Ctrl/⌘ + S。</p></div>
+          <div class="workbench-heading-actions">
+            <button class="button subtle" id="toggle-editor" type="button" aria-expanded="false" aria-controls="editor-region">展开编辑区</button>
+            <div class="script-actions">
+              <button class="button subtle" id="new-strategy" type="button">新建</button>
+              <button class="button subtle" id="delete-strategy" type="button">删除</button>
+              <button class="button subtle" id="validate-strategy" type="button">检查代码</button>
+              <button class="button primary" id="save-strategy" type="button">保存</button>
+              <button class="button run-strategy" id="run-strategy" type="button">保存并回测 →</button>
+            </div>
+          </div>
+        </div>
+        <div id="editor-region" class="editor-region hidden">
+          <div class="workbench-layout">
+            <aside class="script-sidebar">
+              <div class="sidebar-heading"><span>策略文件</span><button class="icon-button small" id="reload-strategies" type="button" aria-label="刷新策略">↻</button></div>
+              <div id="script-list" class="script-list"></div>
+              <p class="sidebar-hint">文件保存在项目 strategies/ 目录。</p>
+            </aside>
+            <div class="editor-column">
+              <div class="editor-toolbar"><span id="editor-filename">尚未选择策略</span><span class="editor-tools"><button class="button subtle" id="strategy-help" type="button">函数帮助</button><span id="editor-status" class="editor-status">就绪</span></span></div>
+              <div id="code-editor" class="code-editor"></div>
+              <div class="editor-footer"><span>Python · UTF-8</span><span>变量与 API 字段提示 · 表达式后输入 .var 提取变量 · Tab/Enter 接受建议；无建议时缩进 2 空格</span></div>
+            </div>
+          </div>
+          <div class="api-reference">
+            <strong>策略内置 API</strong>
+            <span><code>get_stock_codes()</code> / <code>get_stock_names(codes)</code> 股票代码和名称</span>
+            <span><code>get_history(codes, count)</code> 指定条数的倒序历史行情</span>
+            <span><code>broker.get_position(code)</code> / <code>broker.get_cash()</code> 持仓与现金</span>
+            <span><code>broker.buy(code, funds)</code> / <code>broker.sell(code, funds)</code> 按资金交易</span>
+            <span><code>sma</code> / <code>ema</code> / <code>cross_up</code> / <code>cross_down</code></span>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="section-title"><div><h2>回测配置</h2><p>仅运行项目 strategies/ 目录下的策略文件。</p></div></div>
+        <form id="backtest-form" class="form-grid">
+          <label>策略脚本<select name="strategy_file" id="strategy-select" required></select></label>
+          <label>开始日期<input name="start_date" type="date" required></label>
+          <label>结束日期<input name="end_date" type="date" required></label>
+          <label>初始资金<input name="initial_cash" type="number" value="100000" min="1" step="1" required></label>
+          <label>成交价模式<select name="fill_mode"><option value="next_open">下一交易日开盘价</option><option value="close">当日收盘价</option></select></label>
+          <details class="advanced">
+            <summary>费用与滑点设置</summary>
+            <div class="form-grid compact">
+              <label>佣金率<input name="commission" type="number" value="0.00025" min="0" max="0.1" step="0.00001"></label>
+              <label>印花税率<input name="stamp_tax" type="number" value="0.001" min="0" max="0.1" step="0.0001"></label>
+              <label>滑点比例<input name="slippage" type="number" value="0" min="0" max="0.5" step="0.0001"></label>
+              <label>最低佣金（元）<input name="min_commission" type="number" value="5" min="0" step="1"></label>
+            </div>
+          </details>
+          <div class="form-actions"><span id="backtest-status" class="status" role="status"></span>
+            <button class="button primary" type="submit" id="run-button">开始回测</button></div>
+        </form>
+      </section>
+
+      <section id="current-result" class="panel hidden">
+        <div class="section-title"><div><h2>本次回测结果</h2><p id="result-caption"></p></div>
+          <button class="button subtle" id="open-current-detail" type="button">查看完整详情</button></div>
+        <div id="current-metrics" class="metric-grid"></div>
+        <div class="chart-wrap equity-chart-wrap"><canvas id="current-equity" aria-label="净值曲线"></canvas><div class="equity-tooltip hidden" role="status"></div></div>
+        <div id="save-warning" class="notice warning hidden"></div>
+        <div id="order-warning" class="notice warning hidden"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title"><div><h2>历史回测</h2><p>最近运行的回测记录排在最前。</p></div>
+          <button class="button subtle" id="refresh-history" type="button">刷新列表</button></div>
+        <div class="table-scroll"><table><thead><tr><th>回测时间</th><th>策略</th><th>标的</th><th>日期区间</th><th>总收益</th><th>最大回撤</th><th></th></tr></thead>
+          <tbody id="history-body"><tr><td colspan="7" class="empty">正在读取历史回测…</td></tr></tbody></table></div>
+      </section>
+    </section>
+
+    <section id="page-watch" class="page">
+      <div class="page-heading"><div><p class="eyebrow">MARKET VIEW</p><h1>日线看盘</h1>
+        <p class="subheading">实时读取配置的通达信本地日线文件，不使用行情缓存。</p></div></div>
+      <section class="panel">
+        <form id="watch-form" class="inline-form">
+          <label>标的代码 / 名称 / 拼音<span class="stock-picker"><input name="symbol" class="stock-search-input" data-stock-search value="600036" required maxlength="16" placeholder="代码、名称或拼音首字母">
+            <span class="stock-options hidden" role="listbox"></span></span></label>
+          <label>开始日期<input name="start_date" type="date"></label>
+          <label>结束日期<input name="end_date" type="date"></label>
+          <button class="button primary" type="submit">加载行情</button>
+        </form>
+      </section>
+      <section class="panel"><div id="watch-summary" class="section-title"><div><h2>日 K 线</h2><p>提交标的代码以加载本地数据。</p></div></div>
+        <div class="ma-controls" aria-label="均线设置">
+          <strong>均线</strong>
+          <label class="ma-control"><input type="checkbox" data-ma-toggle="0" checked><span class="ma-color ma-color-fast">MA</span>
+            <input type="number" data-ma-period="0" value="5" min="1" max="250" aria-label="第一条均线周期"></label>
+          <label class="ma-control"><input type="checkbox" data-ma-toggle="1" checked><span class="ma-color ma-color-slow">MA</span>
+            <input type="number" data-ma-period="1" value="20" min="1" max="250" aria-label="第二条均线周期"></label>
+        </div>
+        <div class="chart-wrap tall kline-wrap"><canvas id="kline-chart" aria-label="日K线图"></canvas><div id="kline-tooltip" class="kline-tooltip hidden"></div></div>
+        <div id="selected-bar" class="selected-bar"><span>点击 K 线查看当日行情；双击打开分时图。</span></div>
+      </section>
+    </section>
+
+    <section id="page-settings" class="page">
+      <div class="page-heading"><div><p class="eyebrow">LOCAL DATA</p><h1>系统设置</h1>
+        <p class="subheading">设置通达信安装目录，数据由本机直接读取。</p></div></div>
+      <section class="panel narrow">
+        <div class="section-title"><div><h2>通达信数据目录</h2><p>填写包含 vipdoc 文件夹的安装目录。</p></div></div>
+        <form id="settings-form" class="settings-form">
+          <label>安装目录<input name="tdxdir" id="tdxdir" placeholder="例如 D:\new_tdx" required></label>
+          <div class="form-actions"><span id="settings-status" class="status" role="status"></span>
+            <button class="button primary" type="submit">保存并验证</button></div>
+        </form>
+        <p class="hint">配置仅保存在项目根目录的 config.json。请确保目录中包含对应标的的本地日线数据文件。</p>
+      </section>
+    </section>
+
+    <section id="intraday-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="intraday-title">
+      <div class="modal-backdrop" data-close-intraday></div>
+      <div class="modal-card intraday-card">
+        <div class="modal-heading"><div><p class="eyebrow">INTRADAY CHART</p><h2 id="intraday-title">分时行情</h2></div>
+          <button class="icon-button" data-close-intraday aria-label="关闭">×</button></div>
+        <div class="intraday-toolbar"><span id="intraday-summary" class="status"></span>
+          <label>周期<select id="intraday-interval"><option value="1">1 分钟</option><option value="5">5 分钟</option></select></label></div>
+        <div class="chart-wrap tall"><canvas id="intraday-chart" aria-label="分时K线图"></canvas></div>
+        <div id="intraday-selected" class="selected-bar"><span>点击分时 K 线查看行情。</span></div>
+      </div>
+    </section>
+
+    <section id="detail-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="modal-backdrop" data-close-detail></div>
+      <div class="modal-card">
+        <div class="modal-heading"><div><p class="eyebrow">BACKTEST RECORD</p><h2 id="detail-title">回测详情</h2></div>
+          <button class="icon-button" data-close-detail aria-label="关闭">×</button></div>
+        <div id="detail-meta" class="detail-meta"></div>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="performance" role="tab">绩效与净值</button>
+          <button class="tab" data-tab="code" role="tab">策略代码</button>
+          <button class="tab" data-tab="trades" role="tab">成交明细</button>
+        </div>
+        <div id="tab-performance" class="tab-panel active"><div id="detail-metrics" class="metric-grid"></div>
+          <div class="chart-wrap equity-chart-wrap"><canvas id="detail-equity" aria-label="回测净值曲线"></canvas><div class="equity-tooltip hidden" role="status"></div></div></div>
+        <div id="tab-code" class="tab-panel"><pre class="code-view"><code id="strategy-code"></code></pre></div>
+        <div id="tab-trades" class="tab-panel">
+          <div class="section-title"><div><h3>逐笔成交</h3><p id="trade-count"></p></div><button id="export-trades" class="button subtle">导出 CSV</button></div>
+          <div class="table-scroll"><table><thead><tr><th>时间</th><th>代码 / 名称</th><th>方向</th><th>价格</th><th>数量</th><th>金额</th><th>佣金</th><th>印花税</th><th>盈亏</th></tr></thead><tbody id="trade-body"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+    <section id="strategy-help-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="strategy-help-title">
+      <div class="modal-backdrop" data-close-strategy-help></div>
+      <div class="modal-card help-card">
+        <div class="modal-heading"><div><p class="eyebrow">STRATEGY API</p><h2 id="strategy-help-title">内置函数说明</h2></div>
+          <button class="icon-button" data-close-strategy-help aria-label="关闭">×</button></div>
+        <div id="strategy-help-content" class="help-content" aria-live="polite">正在加载函数说明…</div>
+      </div>
+    </section>
+    <div id="toast" class="toast hidden" role="status"></div>
+  </main>
+  <script type="module" src="/static/app.bundle.js?v=34"></script>
+</body>
+</html>

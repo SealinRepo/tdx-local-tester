@@ -1,0 +1,15 @@
+{
+  "name": "tdx-backtester-ui",
+  "private": true,
+  "scripts": {
+    "build": "esbuild static\\app.js --bundle --format=esm --target=es2022 --outfile=static\\app.bundle.js"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.18.6",
+    "@codemirror/lang-python": "^6.2.1",
+    "codemirror": "^6.0.1",
+    "dompurify": "^3.4.17",
+    "esbuild": "^0.25.0",
+    "marked": "^18.1.3"
+  }
+}
