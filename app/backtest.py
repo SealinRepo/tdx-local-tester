@@ -306,8 +306,10 @@ class PortfolioBroker:
     def get_stock_codes(self) -> list[str]:
         return [item["code"] for item in self.stock_records]
 
-    def get_stock_names(self, codes: list[str]) -> list[dict[str, str]]:
-        if not isinstance(codes, (list, tuple)) or any(not isinstance(code, str) for code in codes):
+    def get_stock_names(self, codes: list[str] | tuple[str, ...] | None = None) -> list[dict[str, str]]:
+        if codes is None:
+            codes = self.get_stock_codes()
+        elif not isinstance(codes, (list, tuple)) or any(not isinstance(code, str) for code in codes):
             raise ValueError("股票代码参数必须为字符串数组")
         return [
             {"code": code, "name": self._stock_names[code]}

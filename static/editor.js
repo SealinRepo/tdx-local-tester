@@ -20,7 +20,7 @@ const strategyHighlighting = HighlightStyle.define([
 
 const apiFunctions = [
   { label: "get_stock_codes()", type: "function", detail: "返回通达信本地股票目录中的证券代码列表" },
-  { label: "get_stock_names(codes)", type: "function", detail: "将代码列表转换为含 code 和 name 的证券信息记录列表" },
+  { label: "get_stock_names(codes=None)", type: "function", detail: "传入代码列表时返回对应证券的 code/name；省略参数时返回本地股票目录中的全部证券代码和名称" },
   { label: "get_history(codes, count)", type: "function", detail: "按代码返回最多 count 条日线，日期从新到旧；每条包含 date、O、C、H、L、V" },
   { label: "sma(values, period)", type: "function", detail: "计算最近 period 个数值的简单平均；数据不足时返回 None" },
   { label: "ema(values, period)", type: "function", detail: "计算指数移动平均，平滑系数为 2/(period+1)；数据不足时返回 None" },
@@ -662,7 +662,12 @@ export function createStrategyEditor(parent, value, onChange) {
         }),
         EditorView.theme({
           "&": { height: "100%", fontSize: "13px", backgroundColor: "#17251f", color: "#e5eee8" },
-          ".cm-scroller": { overflow: "auto", fontFamily: '"Cascadia Code", Consolas, monospace' },
+          ".cm-scroller": {
+            overflowY: "scroll",
+            overflowX: "auto",
+            scrollbarGutter: "stable",
+            fontFamily: '"Cascadia Code", Consolas, monospace',
+          },
           ".cm-gutters": { backgroundColor: "#17251f", color: "#718078", border: "none" },
           ".cm-activeLineGutter": { backgroundColor: "#21372d" },
           ".cm-activeLine": { backgroundColor: "#ffffff08" },

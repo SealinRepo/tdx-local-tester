@@ -22,6 +22,18 @@ class TdxDataError(RuntimeError):
     pass
 
 
+def _is_common_a_share(market: str, code: str, name: str) -> bool:
+    if name.startswith(("退市", "退", "摘牌")):
+        return False
+    if market == "sh":
+        return code.startswith(("600", "601", "603", "605", "688", "689"))
+    if market == "sz":
+        return code.startswith(("000", "001", "002", "003", "300", "301"))
+    if market == "bj":
+        return code.startswith(("4", "8", "92"))
+    return False
+
+
 def _tnf_stock_records(content: bytes) -> list[tuple[str, str]]:
     best_records: list[tuple[str, str]] = []
     for header_size, record_size, code_offset, name_offset in _TNF_LAYOUTS:
@@ -59,7 +71,9 @@ def _load_stock_records(
         except OSError as error:
             raise TdxDataError(f"读取通达信股票目录失败：{error}") from error
         for code, name in records:
-            stocks[code] = name
+            market = Path(filename).name[:2].lower()
+            if _is_common_a_share(market, code, name):
+                stocks[code] = name
     return tuple(
         (code, name, "".join(lazy_pinyin(name, style=Style.FIRST_LETTER)).lower())
         for code, name in sorted(stocks.items())
@@ -93,7 +107,7 @@ def search_stocks(tdxdir: str, query: str, limit: int = 10) -> list[dict[str, st
     )
     stocks = _load_stock_records(cache_key)
     if not stocks:
-        raise TdxDataError("无法从通达信股票索引中读取股票代码和名称，请检查本地 .tnf 文件。")
+        raise TdxDataError("通达信索引中未找到符合条件的沪深北普通 A 股。")
 
     needle = query.strip().lower()
     if not needle:
@@ -140,7 +154,7 @@ def list_stock_records(tdxdir: str) -> list[dict[str, str]]:
     )
     stocks = _load_stock_records(cache_key)
     if not stocks:
-        raise TdxDataError("无法从通达信股票索引中读取股票代码和名称，请检查本地 .tnf 文件。")
+        raise TdxDataError("通达信索引中未找到符合条件的沪深北普通 A 股。")
     return [{"code": code, "name": name} for code, name, _ in stocks]
 
 

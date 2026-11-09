@@ -15,12 +15,28 @@ class StrategyApiTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             index = Path(directory) / "T0002" / "hq_cache"
             index.mkdir(parents=True)
-            records = bytearray(360 * 2)
-            records[:6] = b"600036"
-            records[31:31 + len("招商银行".encode("gbk"))] = "招商银行".encode("gbk")
-            records[360:366] = b"000001"
-            records[391:391 + len("平安银行".encode("gbk"))] = "平安银行".encode("gbk")
-            (index / "shs.tnf").write_bytes(bytes(50) + records)
+            def write_index(filename, entries):
+                records = bytearray(360 * len(entries))
+                for position, (code, name) in enumerate(entries):
+                    offset = position * 360
+                    records[offset:offset + 6] = code.encode("ascii")
+                    encoded_name = name.encode("gbk")
+                    records[offset + 31:offset + 31 + len(encoded_name)] = encoded_name
+                (index / filename).write_bytes(bytes(50) + records)
+
+            write_index("shs.tnf", [
+                ("600036", "招商银行"),
+                ("000001", "上证指数"),
+                ("243074", "25厦轨01"),
+                ("688001", "退市测试"),
+            ])
+            write_index("szs.tnf", [
+                ("000001", "平安银行"),
+                ("300750", "宁德时代"),
+                ("159001", "基金示例"),
+                ("200001", "深B示例"),
+            ])
+            write_index("bjs.tnf", [("830001", "普通北交所股")])
             with (
                 patch.object(main, "_read_config", return_value={"tdxdir": directory}),
                 TestClient(main.app) as client,
@@ -28,12 +44,29 @@ class StrategyApiTests(unittest.TestCase):
                 by_code = client.get("/api/stocks/search", params={"q": "6000"})
                 by_initials = client.get("/api/stocks/search", params={"q": "zsyh"})
                 by_name = client.get("/api/stocks/search", params={"q": "平安"})
+                bond = client.get("/api/stocks/search", params={"q": "243074"})
+                index_quote = client.get("/api/stocks/search", params={"q": "上证"})
+                fund = client.get("/api/stocks/search", params={"q": "159001"})
+                delisted = client.get("/api/stocks/search", params={"q": "688001"})
+                b_share = client.get("/api/stocks/search", params={"q": "200001"})
+                beijing = client.get("/api/stocks/search", params={"q": "830001"})
+                stock_records = main.list_stock_records(directory)
         self.assertEqual(by_code.status_code, 200, by_code.text)
         self.assertEqual(by_initials.status_code, 200, by_initials.text)
         self.assertEqual(by_name.status_code, 200, by_name.text)
         self.assertEqual(by_code.json()[0], {"code": "600036", "name": "招商银行"})
         self.assertEqual(by_initials.json()[0], {"code": "600036", "name": "招商银行"})
         self.assertEqual(by_name.json()[0], {"code": "000001", "name": "平安银行"})
+        self.assertEqual(bond.json(), [])
+        self.assertEqual(index_quote.json(), [])
+        self.assertEqual(fund.json(), [])
+        self.assertEqual(delisted.json(), [])
+        self.assertEqual(b_share.json(), [])
+        self.assertEqual(beijing.json()[0], {"code": "830001", "name": "普通北交所股"})
+        self.assertEqual(
+            {stock["code"] for stock in stock_records},
+            {"600036", "000001", "300750", "830001"},
+        )
 
     def test_strategy_help_serves_documentation(self):
         with tempfile.TemporaryDirectory() as directory:

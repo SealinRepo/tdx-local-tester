@@ -126,6 +126,25 @@ class BacktestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             broker.get_history(["600036"], True)
 
+    def test_get_stock_names_without_codes_returns_entire_local_directory(self):
+        stock_records = [
+            {"code": "600036", "name": "招商银行"},
+            {"code": "000001", "name": "平安银行"},
+        ]
+        broker = PortfolioBroker(
+            initial_cash=10_000,
+            commission=0,
+            stamp_tax=0,
+            slippage=0,
+            fill_mode="next_open",
+            min_commission=0,
+            market_data_provider=lambda code: [],
+            stock_records=stock_records,
+        )
+        self.assertEqual(broker.get_stock_names(), stock_records)
+        self.assertEqual(broker.get_stock_names(None), stock_records)
+        self.assertEqual(broker.get_stock_names(["000001"]), [stock_records[1]])
+
     def test_portfolio_get_cash_exposes_total_and_available(self):
         broker = PortfolioBroker(
             initial_cash=10_000,

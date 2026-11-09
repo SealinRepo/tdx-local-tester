@@ -25605,7 +25605,7 @@ var strategyHighlighting = HighlightStyle.define([
 ]);
 var apiFunctions = [
   { label: "get_stock_codes()", type: "function", detail: "\u8FD4\u56DE\u901A\u8FBE\u4FE1\u672C\u5730\u80A1\u7968\u76EE\u5F55\u4E2D\u7684\u8BC1\u5238\u4EE3\u7801\u5217\u8868" },
-  { label: "get_stock_names(codes)", type: "function", detail: "\u5C06\u4EE3\u7801\u5217\u8868\u8F6C\u6362\u4E3A\u542B code \u548C name \u7684\u8BC1\u5238\u4FE1\u606F\u8BB0\u5F55\u5217\u8868" },
+  { label: "get_stock_names(codes=None)", type: "function", detail: "\u4F20\u5165\u4EE3\u7801\u5217\u8868\u65F6\u8FD4\u56DE\u5BF9\u5E94\u8BC1\u5238\u7684 code/name\uFF1B\u7701\u7565\u53C2\u6570\u65F6\u8FD4\u56DE\u672C\u5730\u80A1\u7968\u76EE\u5F55\u4E2D\u7684\u5168\u90E8\u8BC1\u5238\u4EE3\u7801\u548C\u540D\u79F0" },
   { label: "get_history(codes, count)", type: "function", detail: "\u6309\u4EE3\u7801\u8FD4\u56DE\u6700\u591A count \u6761\u65E5\u7EBF\uFF0C\u65E5\u671F\u4ECE\u65B0\u5230\u65E7\uFF1B\u6BCF\u6761\u5305\u542B date\u3001O\u3001C\u3001H\u3001L\u3001V" },
   { label: "sma(values, period)", type: "function", detail: "\u8BA1\u7B97\u6700\u8FD1 period \u4E2A\u6570\u503C\u7684\u7B80\u5355\u5E73\u5747\uFF1B\u6570\u636E\u4E0D\u8DB3\u65F6\u8FD4\u56DE None" },
   { label: "ema(values, period)", type: "function", detail: "\u8BA1\u7B97\u6307\u6570\u79FB\u52A8\u5E73\u5747\uFF0C\u5E73\u6ED1\u7CFB\u6570\u4E3A 2/(period+1)\uFF1B\u6570\u636E\u4E0D\u8DB3\u65F6\u8FD4\u56DE None" },
@@ -26229,7 +26229,12 @@ function createStrategyEditor(parent, value, onChange) {
         }),
         EditorView.theme({
           "&": { height: "100%", fontSize: "13px", backgroundColor: "#17251f", color: "#e5eee8" },
-          ".cm-scroller": { overflow: "auto", fontFamily: '"Cascadia Code", Consolas, monospace' },
+          ".cm-scroller": {
+            overflowY: "scroll",
+            overflowX: "auto",
+            scrollbarGutter: "stable",
+            fontFamily: '"Cascadia Code", Consolas, monospace'
+          },
           ".cm-gutters": { backgroundColor: "#17251f", color: "#718078", border: "none" },
           ".cm-activeLineGutter": { backgroundColor: "#21372d" },
           ".cm-activeLine": { backgroundColor: "#ffffff08" },
